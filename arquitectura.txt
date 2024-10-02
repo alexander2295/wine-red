@@ -1,0 +1,123 @@
+Arquitectura del Sistema de Procesamiento de Datos en Tiempo Real
+1. ERP (MySQL)
+El sistema ERP contiene las seis tablas de donde se extraerán los datos en tiempo real.
+Debezium se conectará a esta base de datos MySQL para monitorear los cambios y emitir eventos cada vez que se actualicen,
+ inserten o eliminen datos en las tablas seleccionadas.
+2. Debezium (CDC - Captura de Datos de Cambios)
+
+Función: Actúa como un intermediario para capturar los cambios en la base de datos MySQL (las seis tablas).
+Salida: Envía esos eventos a Kafka en forma de mensajes (formato JSON o Avro).
+Tópicos en Kafka: Cada tabla tiene un tópico dedicado en Kafka donde Debezium publicará los eventos (ej. erp_db.tabla1, erp_db.tabla2, etc.).
+
+3. Kafka (Sistema de Mensajería en Tiempo Real)
+Función: Kafka actuará como el sistema de mensajería en tiempo real que recibe los eventos de Debezium (uno por cada tabla).
+Tópicos: Cada tabla tiene su propio tópico, lo que permite procesar los eventos de cada tabla de manera independiente y paralela.
+Ventaja: Kafka permite manejar grandes volúmenes de datos y asegurarse de que los mensajes sean procesados de manera eficiente y ordenada.
+4. Procesamiento de Datos en Tiempo Real (Python/Spark)
+Función: Se procesarán y limpiarán los datos en tiempo real.
+Python o Apache Spark Structured Streaming se encargará de consumir los eventos desde los tópicos de Kafka y aplicar la lógica de limpieza y
+ transformación necesaria para los datos.
+Limpieza y Procesamiento: Esto incluye remover duplicados, validar formatos, corregir valores faltantes, y ejecutar cualquier lógica de negocio 
+adicional sobre los datos.
+
+5. Almacenamiento Procesado (MySQL/PostgreSQL o Data Warehouse)
+Función: Después de limpiar los datos, se almacenan en una base de datos diferente para su uso posterior.
+Se podría utilizar MySQL, PostgreSQL, o un Data Warehouse como Amazon Redshift, Google BigQuery, o Snowflake para almacenar los datos procesados.
+Los datos estarán listos para ser consultados y usados para análisis o visualización.
+
+6. Visualización y Análisis de Datos (Grafana/Power BI/Tableau)
+Función: Visualizar los datos procesados en tiempo real.
+Puedes utilizar herramientas como Grafana, Power BI, o Tableau para mostrar paneles de control interactivos que muestren el flujo de datos 
+limpio y procesado en tiempo real.
+También se pueden configurar alertas basadas en ciertos eventos en los datos.
+
+7. Docker (Contenerización y Despliegue)
+Toda esta arquitectura se puede ejecutar de manera más eficiente utilizando contenedores de Docker para cada componente (MySQL, Kafka, 
+Debezium, Python/Spark, etc.).
+Docker Compose o Kubernetes pueden orquestar el despliegue y la comunicación entre los servicios.
+Flujo del Proceso
+ERP (MySQL): Las tablas del ERP (tabla1, tabla2, ..., tabla6) contienen los datos. Cada vez que se produce un cambio en las tablas,
+ Debezium detecta las modificaciones.
+
+Debezium (CDC): Debezium se conecta a MySQL y emite eventos de cambio (CDC) hacia Kafka en tiempo real.
+
+Kafka (Tópicos): Cada tabla tiene un tópico correspondiente en Kafka (erp_db.tabla1, erp_db.tabla2, etc.). Kafka asegura que los 
+eventos de cada tabla se manejen por separado y se entreguen en tiempo real.
+
+Consumidor Kafka (Python/Spark):
+
+Los consumidores de Kafka están escuchando constantemente los mensajes de cada tópico.
+A medida que llegan eventos, se limpian y procesan los datos usando Python o Apache Spark.
+Almacenamiento Procesado: Los datos limpios y procesados se guardan en una base de datos (MySQL, PostgreSQL, o un Data Warehouse).
+
+Visualización de Datos: Herramientas de visualización como Grafana o Power BI se conectan a la base de datos para mostrar los datos procesados
+ en paneles de control interactivos.
+
+Diagrama de Arquitectura
+lua
+Copiar código
+   +----------------+        +----------------+         +-----------------+      +----------------------+
+   |                |        |                |         |                 |      |                      |
+   |    ERP         +-------->   Debezium     +--------->   Kafka (6 tópicos)     |    Limpieza y         |
+   |   (MySQL)      |        | (CDC)          |         |                 |      | Procesamiento         |
+   |                |        |                |         |                 |      | (Python/Spark)        |
+   +----------------+        +----------------+         +-----------------+      +----------------------+
+                                                                                    |
+                                                                                    v
+                                                                                +----------------------+
+                                                                                |     Almacenamiento    |
+                                                                                | (MySQL/PostgreSQL o   |
+                                                                                |   Data Warehouse)     |
+                                                                                +----------------------+
+                                                                                          |
+                                                                                          v
+                                                                                +----------------------+
+                                                                                |   Visualización (BI)  |
+                                                                                | (Grafana/PowerBI/     |
+                                                                                |      Tableau)         |
+                                                                                +----------------------+
+
+
+4. Arquitectura a Nivel de Componentes
+Kafka como Middleware:
+
+Kafka actuará como sistema de mensajería distribuido. Los datos del ERP se publicarán en un tópico de Kafka y serán consumidos por Spark para su procesamiento.
+Spark Streaming:
+
+Apache Spark consumirá los datos de Kafka y aplicará las reglas de negocio, limpieza, y agregación de datos. Spark es ideal para manejar grandes volúmenes de datos en tiempo real y aplicar transformaciones complejas.
+MySQL para el Almacenamiento:
+
+Una vez que los datos hayan sido procesados, serán almacenados en MySQL. Esto permitirá la persistencia de datos y su posterior uso para generación de reportes y análisis históricos.
+Visualización en Tiempo Real:
+
+Las herramientas de visualización como Grafana o Power BI consumirán los datos directamente desde MySQL y mostrarán gráficos, métricas clave y alertas. Grafana es especialmente útil para actualizaciones en tiempo real y ofrece una gran flexibilidad para conectar bases de datos y crear paneles personalizados.
+AWS para el Despliegue:
+
+EC2 alojará los contenedores de Kafka, Spark y las herramientas de visualización.
+S3 se usará para almacenamiento de archivos y logs.
+IAM gestionará el acceso seguro a la infraestructura en AWS.
+
+
+
+3. Flujo de Trabajo
+A continuación se detalla el flujo de trabajo del proyecto:
+
+Ingesta de Datos: Los datos son enviados desde el ERP a través de Kafka en tiempo real.
+Procesamiento de Datos:
+Los datos son consumidos desde Kafka y procesados en tiempo real utilizando Apache Spark.
+Se realiza la limpieza, normalización y detección de valores atípicos en los datos.
+Los datos procesados son almacenados en MySQL.
+Agregación de Datos:
+Los datos son agregados en ventanas de tiempo (por ejemplo, cada 10 minutos) para calcular promedios y tendencias.
+Visualización de Datos:
+Grafana se utiliza para crear dashboards que muestran los KPIs y tendencias en tiempo real.
+Configuración de Alertas:
+Se configuran alertas automáticas para eventos específicos y se envían notificaciones a través de Slack o email.
+4. Plan de Implementación
+Configurar Kafka y los tópicos necesarios para la ingesta de datos.
+Implementar la lógica de limpieza y preprocesamiento en Python utilizando Apache Spark o Flink.
+Configurar MySQL para almacenar los datos procesados.
+Desarrollar dashboards en Grafana para visualizar los datos.
+Implementar y probar las alertas automáticas utilizando librerías de Python.
+Realizar pruebas de integración para asegurar que todos los componentes funcionen correctamente juntos.
+Migrar a AWS una vez que se haya verificado que el sistema funciona de manera local.
